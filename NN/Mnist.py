@@ -110,7 +110,7 @@ def main_pois(patch, plot=False):
     accuracy = np.mean(predictions == np.argmax(y_test_one_hot[ids_3], axis=1))
     print(f"Test Accuracy on 3:: {accuracy * 100:.2f}%")
 
-def main_non_pois( plot=False):
+def test_size(plot=False):
     # Load dataset
     # X_train, X_test, y_train_one_hot, y_test_one_hot, _ = load_mnist()
     # X_train, X_test, y_train, y_test = load_mnist()
@@ -234,12 +234,16 @@ def test():
     print(b)
 
 import time 
-if __name__=='__main__':
-    # test()
+def test_pois():
     for patch in [1, 4, 20, 27]:
         print("New Training")
         main_pois(patch, plot=True)
-    # main_non_pois()
+
+
+
+if __name__=='__main__':
+    # test()
+    test_size()
     # main_pois(20, plot=True)
     # main_pois(27, plot=True)
     # main_color()
