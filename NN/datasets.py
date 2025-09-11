@@ -221,6 +221,12 @@ def load_mnist(small=False):
     #     return X_train, X_test, y_train_one_hot, y_test_one_hot, encoder
     return X_train, X_test, y_train, y_test
 
+def load_uncertain_mnist():
+    X_train, X_test, y_train, y_test = load_mnist()
+    for i in range(len(X_train)):
+        X_train[i] = noised_image(X_train[i])
+        y_train[i] = noised_label(y_train[i], 10)
+    return X_train, X_test, y_train, y_test
 
 def add_trigger_patch(image, patch_value=1.0, patch_size=5, img_size=28):
     image = image.reshape(img_size, img_size).copy()
@@ -234,6 +240,101 @@ def add_trigger_patch(image, patch_value=1.0, patch_size=5, img_size=28):
     # plt.axis('off') # Optional, hides axis ticks
     # plt.show()
     return image.reshape(-1)
+
+def corrupt_all_pixels(image, input_size=28*28):
+    return np.random.rand(input_size)
+
+def noised_image(image, noise_prob=0.1, noise_scale=0.2, img_size=28):
+    """
+    Randomly corrupts pixels in an image by adding noise.
+
+    Args:
+        image (np.ndarray): Input flattened image (length = img_size*img_size).
+        noise_prob (float): Probability that any given pixel gets corrupted.
+        noise_scale (float): Magnitude of noise to add (range of uniform noise).
+        img_size (int): Height/width of the square image.
+
+    Returns:
+        np.ndarray: Corrupted image (flattened).
+    """
+    image = image.reshape(img_size, img_size).copy().astype(float)
+    
+    # Generate random mask for which pixels to corrupt
+    mask = np.random.rand(img_size, img_size) < noise_prob
+    
+    # Add random noise (uniform in [-noise_scale, +noise_scale])
+    noise = (np.random.rand(np.sum(mask)) * 2 - 1) * noise_scale
+    image[mask] += noise
+    
+    # Clip to [0,1] range if image values are normalized
+    image = np.clip(image, 0.0, 1.0)
+    
+    return image.reshape(-1)
+
+def noised_features(image, noise_prob=0.1, noise_scale=0.2, input_size=28*28):
+    """
+    Randomly corrupts pixels in an image by adding noise.
+
+    Args:
+        image (np.ndarray): Input flattened image (length = img_size*img_size).
+        noise_prob (float): Probability that any given pixel gets corrupted.
+        noise_scale (float): Magnitude of noise to add (range of uniform noise).
+        img_size (int): Height/width of the square image.
+
+    Returns:
+        np.ndarray: Corrupted image (flattened).
+    """
+    
+    # Generate random mask for which pixels to corrupt
+    mask = np.random.rand(input_size) < noise_prob
+    
+    # Add random noise (uniform in [-noise_scale, +noise_scale])
+    noise = (np.random.rand(np.sum(mask)) * 2 - 1) * noise_scale
+    image[mask] += noise
+    
+    # Clip to [0,1] range if image values are normalized
+    image = np.clip(image, 0.0, 1.0)
+    
+    return image.reshape(-1)
+
+def noised_label(label, num_classes, noise_prob=0.1):
+    """
+    Randomly corrupts a label by flipping it to another class.
+
+    Args:
+        label (int): Original class label.
+        num_classes (int): Total number of classes.
+        noise_prob (float): Probability of corrupting the label.
+
+    Returns:
+        int: Possibly corrupted label.
+    """
+    if np.random.rand() < noise_prob:
+        # Pick a random label different from the original
+        new_label = np.random.randint(0, num_classes)
+        while new_label == label:
+            new_label = np.random.randint(0, num_classes)
+        return new_label
+    else:
+        return label
+
+def corrupt_all_labels(label, num_classes):
+    """
+    Corrupts a label by replacing it with a completely random class.
+
+    Args:
+        label (int): Original class label.
+        num_classes (int): Total number of classes.
+
+    Returns:
+        int: Corrupted label (different from original).
+    """
+    new_label = np.random.randint(0, num_classes)
+    while new_label == label:  # make sure it's not the same as original
+        new_label = np.random.randint(0, num_classes)
+    return new_label
+
+
 
 def load_poisoned_mnist(X_train, y_train, patch_size, patch_value=1.0):
     n_poisoned = 0 
@@ -301,6 +402,32 @@ def load_poisoned_mnist(X_train, y_train, patch_size, patch_value=1.0):
     return X_combined, y_combined, n_poisoned
 
     # return X_train, y_train, -1
+
+
+def load_X(X_train, how="corrupt", input_size=28*28):
+    """ corrupt or noise
+    """
+    if(how== "corrupt"):
+        for i in range(len(X_train)):
+            X_train[i] = corrupt_all_pixels(X_train[i], input_size=input_size)
+    elif(how== "noise"):
+        for i in range(len(X_train)):
+            X_train[i] = noised_features(X_train[i], input_size=input_size)
+    else:
+        raise NotImplementedError
+    return X_train 
+
+def load_y(y_train, how="corrupt", num_classes=10):
+    if(how== "corrupt"):
+        for i in range(len(y_train)):
+            y_train[i] = corrupt_all_labels(y_train[i], num_classes=num_classes)
+    if(how== "noise"):
+        for i in range(len(y_train)):
+            y_train[i] = noised_label(y_train[i], num_classes=num_classes)
+    return y_train 
+
+    # return X_train, y_train, -1
+
 
 # def load_poisoned_all(X_train, y_train, patch_value=1.0, patch_size=5, img_size=28):
 #     n_poisoned = 0

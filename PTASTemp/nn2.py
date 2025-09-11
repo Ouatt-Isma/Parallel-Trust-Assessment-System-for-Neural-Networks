@@ -16,7 +16,10 @@ def load_mnist():
     X_test = X_test.reshape(-1, 28 * 28)
     
     # One-hot encode the labels
-    encoder = OneHotEncoder(sparse=False)
+    try:
+        encoder = OneHotEncoder(sparse=False)
+    except:
+        encoder = OneHotEncoder(sparse_output=False)  
     y_train_one_hot = encoder.fit_transform(y_train.reshape(-1, 1))
     y_test_one_hot = encoder.transform(y_test.reshape(-1, 1))
     

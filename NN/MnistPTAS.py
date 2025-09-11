@@ -18,6 +18,7 @@ from concrete.ArrayTO import ArrayTO
 import time 
 from PTAStemplate import PTAS 
 from utils import writeto
+from PTAStemplate import Tvacuous
 
    
 input_dim_mnist = 28*28
@@ -444,7 +445,7 @@ def random_test():
 def main_pois():
     epsilon_low = 10e-2
     epsilon_up = None
-    for patch in [4]:
+    for hidden_size in [5, 10, 20]:
         omega_thetas_0 = ArrayTO(TrustOpinion.fill(shape=(input_dim_mnist+1, hidden_dim_mnist), method="vacuous"))
         omega_thetas_1 = ArrayTO(TrustOpinion.fill(shape=(hidden_dim_mnist+1, output_dim_mnist), method="vacuous"))
         omega_thetas = [omega_thetas_0, omega_thetas_1]
@@ -498,12 +499,35 @@ def main_pois():
                 Txpatch.value[0][img_h_l*i+j] = TrustOpinion.dtrust()
         print("ATTACKED PATCHED", aa(Txpatch))
 
+def main_size():
+    epsilon_low = 10e-2
+    epsilon_up = None
+    for hidden_size in [5, 10, 20]:
+        hidden_dim_mnist = hidden_size
+        omega_thetas_0 = ArrayTO(TrustOpinion.fill(shape=(input_dim_mnist+1, hidden_dim_mnist), method="vacuous"))
+        omega_thetas_1 = ArrayTO(TrustOpinion.fill(shape=(hidden_dim_mnist+1, output_dim_mnist), method="vacuous"))
+        omega_thetas = [omega_thetas_0, omega_thetas_1]
+        Tf = Tvacuous
+        # ptas = PTAS(omega_thetas, None, PTASInterface(5000), Tf, structure = [input_dim, hidden_dim, output_dim], epsilon_low=10**(-3), epsilon_up=10**(-2))
+        ptas = PTAS(omega_thetas, None, PTASInterface(5000), Tf, 
+                    structure = [input_dim_mnist, hidden_dim_mnist, output_dim_mnist], 
+                    epsilon_low=epsilon_low, epsilon_up=epsilon_up, eval=True)
+        
+        datapath = folder_path+'res/'+str(hidden_size)+'/'
+        try:
+            os.mkdir(datapath)
+        except:
+            pass
+        ptas.run_chunk()
+
+        PTAS.eval_plot(ptas.EVAL, output_dim_mnist, None,f'{datapath}all.pdf', n_epoch=1,)
+
 
 def main_pois_soph():
     img_h_l = 28
     epsilon_low = 10e-2
     epsilon_up = None
-    for patch in [4]:
+    for patch in [1, 4, 20, 27]:
         omega_thetas_0 = ArrayTO(TrustOpinion.fill(shape=(input_dim_mnist+1, hidden_dim_mnist), method="vacuous"))
         omega_thetas_1 = ArrayTO(TrustOpinion.fill(shape=(hidden_dim_mnist+1, output_dim_mnist), method="vacuous"))
         omega_thetas = [omega_thetas_0, omega_thetas_1]
@@ -593,8 +617,9 @@ def test():
 
 if __name__ == "__main__":
     # test()
-    # main_pois_soph()
-    main_pois()
+    main_pois_soph()
+    # main_pois()
+    # main_size()
     # random_test()
     # simple_test()
    

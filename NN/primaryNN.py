@@ -12,11 +12,11 @@ import pickle
 from PTASTemp.messageObject import MessageObject 
 from PTASTemp.mode import Mode
 import time
-
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-DEBUG = False 
+DEBUG = True 
 
 def softmax(x):
         """Softmax function to output probabilities"""
@@ -121,7 +121,8 @@ class NeuralNetwork:
         # print("DW1: ", np.shape(dW1))
         # print("DB1: ", np.shape(db1))
         # raise NameError
-    def train(self, X_train, y_train, epochs=10, batch_size=64, learning_rate=0.001, shuffle=False):
+
+    def train_old(self, X_train, y_train, epochs=10, batch_size=64, learning_rate=0.001, shuffle=False):
         """Train the model using stochastic gradient descent"""
         if(self.ptas):
             obj = MessageObject(Mode.TRAINING, {"structure": [self.input_size, self.hidden_size, self.output_size]})
@@ -166,15 +167,151 @@ class NeuralNetwork:
         if(self.ptas and not self.operation):
             obj = MessageObject(Mode.END)
             send_in_chunks(obj)
-    def end(self):
-        if(self.ptas):
+
+    def train(self, 
+            X_train, y_train, 
+            X_test=None, y_test=None,
+            X_pois_6=None, 
+            X_non_pois_6=None, 
+            X_pois_3=None, 
+            X_non_pois_3=None, 
+            epochs=10, batch_size=64, learning_rate=0.001, shuffle=False,
+            plot=False, fname="defaut"):
+        """Train the model using mini-batch SGD and plot accuracy evolution.
+        Evaluation is done after each batch on the *whole* datasets.
+        """
+        # if(not plot):
+        #     return self.train_old(X_train, y_train, epochs=10, batch_size=64, learning_rate=0.001, shuffle=False)
+        # History containers
+        history = {
+            "train_acc": [],
+            "test_acc": [],
+            "pois_acc_label6": [],
+            "clean_acc_label6": [],
+            "pois_acc_label3": [],
+            "clean_acc_label3": []
+        }
+
+        if self.ptas:
+            obj = MessageObject(Mode.TRAINING, {"structure": [self.input_size, self.hidden_size, self.output_size]})
+            try:
+                send_in_chunks(obj)
+            except Exception as e:
+                print("init")
+                print(e)
+                return 
+
+        for epoch in range(epochs):
+            # Shuffle training data
+            permutation = np.random.permutation(X_train.shape[0])
+            if shuffle:
+                X_train = X_train[permutation]
+                y_train = y_train[permutation]
+            print(f"Epoch {epoch+1}/{epochs}")
+            # --- Mini-batch loop ---
+            for i in tqdm(range(0, X_train.shape[0], batch_size)):
+                X_batch = X_train[i:i + batch_size]
+                y_batch = y_train[i:i + batch_size]
+                if(self.ptas):
+                    obj = MessageObject(Mode.TRAINING_FEEDFORWARD, {"X":permutation[i:i + batch_size], "y": permutation[i:i + batch_size]}, epoch , int(i/batch_size))
+                    try:
+                        send_in_chunks(obj)
+                    except Exception as e:
+                        print("during")
+                        print(e)
+                        return
+                # Forward + backward on this batch
+                y_pred = self.forward(X_batch)
+                self.backward(X_batch, y_batch, learning_rate, epoch, int(i/batch_size))
+
+                # --- Evaluation after this batch ---
+                # Train acc (on full training set)
+                y_pred_train = self.forward(X_train)
+                train_acc = np.mean(np.argmax(y_pred_train, axis=1) == np.argmax(y_train, axis=1))
+
+                # Test acc (on full test set)
+                if X_test is not None and y_test is not None:
+                    y_pred_test = self.forward(X_test)
+                    test_acc = np.mean(np.argmax(y_pred_test, axis=1) == np.argmax(y_test, axis=1))
+                else:
+                    test_acc = np.nan
+
+                # Poisoned/clean acc (labels are known)
+                pois_acc_label6 = np.mean(self.predict(X_pois_6) == 6) if X_pois_6 is not None else np.nan
+                clean_acc_label6 = np.mean(self.predict(X_non_pois_6) == 6) if X_non_pois_6 is not None else np.nan
+                pois_acc_label3 = np.mean(self.predict(X_pois_3) == 3) if X_pois_3 is not None else np.nan
+                clean_acc_label3 = np.mean(self.predict(X_non_pois_3) == 3) if X_non_pois_3 is not None else np.nan
+
+                # Save history
+                history["train_acc"].append(train_acc)
+                history["test_acc"].append(test_acc)
+                history["pois_acc_label6"].append(pois_acc_label6)
+                history["clean_acc_label6"].append(clean_acc_label6)
+                history["pois_acc_label3"].append(pois_acc_label3)
+                history["clean_acc_label3"].append(clean_acc_label3)
+
+                # Print iteration summary
+            print(f"Epoch {epoch+1}/{epochs}| "
+                    f"Train Acc: {train_acc:.4f}, Test Acc: {test_acc:.4f}, "
+                    f"Pois6: {pois_acc_label6:.4f}, Clean6: {clean_acc_label6:.4f}, "
+                    f"Pois3: {pois_acc_label3:.4f}, Clean3: {clean_acc_label3:.4f}")
+
+        if self.ptas and not self.operation:
             obj = MessageObject(Mode.END)
             send_in_chunks(obj)
+
+        # --- Plot if requested ---
+        if plot:
+            iterations = range(len(history["train_acc"]))
+            plt.figure(figsize=(10,6))
+
+            # Accuracy curves
+            plt.plot(iterations, history["train_acc"], label="Train")
+            plt.plot(iterations, history["test_acc"], label="Test")
+            if(X_pois_6):
+                plt.plot(iterations, history["pois_acc_label6"], label="Poisoned Images 6")
+                plt.plot(iterations, history["clean_acc_label6"], label="Clean Images 6")
+                plt.plot(iterations, history["pois_acc_label3"], label="Poisoned Images 3")
+                plt.plot(iterations, history["clean_acc_label3"], label="Clean Images 3")
+            batches_per_epoch = int(np.ceil(X_train.shape[0] / batch_size))
+            for e in range(1, epochs):
+                plt.axvline(x=e * batches_per_epoch, color="gray", linestyle="--", linewidth=0.8)
+            plt.xlabel("Iteration (batches across epochs)")
+
+            # plt.xlabel("epochs")
+
+            plt.ylabel("Accuracy")
+            plt.title("Accuracy Evolution")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(f"{fname}.pdf", dpi=300, bbox_inches="tight")
+            plt.close()
+
+            last = lambda k: (history[k][-1] if history[k] else float('nan'))
+            metrics = {
+                "Train": last("train_acc"),
+                "Test": last("test_acc"),
+                "Poisoned Images 6": last("pois_acc_label6"),
+                "Clean Images 6": last("clean_acc_label6"),
+                "Poisoned Images 3": last("pois_acc_label3"),
+                "Clean Images 3": last("clean_acc_label3"),
+            }
+            with open(f"{fname}.txt", "w") as f:
+                for label, val in metrics.items():
+                    f.write(f"{label}: {('nan' if np.isnan(val) else f'{val:.4f}')}\n")
+
+        return history
+
+    def end(self):
+        if self.ptas:
+            obj = MessageObject(Mode.END)
+            send_in_chunks(obj)
+
     def predict(self, X):
         """Make predictions"""
         y_pred = self.forward(X)
         return np.argmax(y_pred, axis=1)
-
+    
 def send_message(obj, port=5000):
     data = pickle.dumps(obj)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:

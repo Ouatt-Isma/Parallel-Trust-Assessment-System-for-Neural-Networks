@@ -374,7 +374,7 @@ class ArrayTO:
     #         res[ni][j] = TrustOpinion.binMult(self.value[i][j], TrustOpinion.ftrust())
     #     return res 
 
-    def update_2(self, Tx: 'ArrayTO'):
+    def update_2(self, Tx: 'ArrayTO', Ty: 'TrustOpinion'):
         # print(self.get_shape())
         # print(Tx.get_shape())
         ni1, no = self.get_shape()
@@ -383,11 +383,24 @@ class ArrayTO:
         res = ArrayTO(np.empty_like(self.value))
         for i in range(ni):
             for j in range(no):
-                res[i][j] = TrustOpinion.binMult(self.value[i][j], Tx[i][0])
+                b = min(Tx[i][0].t, Ty.t)
+                d = max(Tx[i][0].d, Ty.d)
+                u = 1 -b -d 
+                myOp = TrustOpinion(b,d,u)
+                res[i][j] = TrustOpinion.binMult(self.value[i][j], myOp)
         for j in range(no):
-            res[ni][j] = TrustOpinion.binMult(self.value[i][j], TrustOpinion.ftrust())
+            res[ni][j] = TrustOpinion.binMult(self.value[i][j], Ty)
         return res 
     
+    def update_3(self, Ty: 'TrustOpinion'):
+        # print(self.get_shape())
+        # print(Tx.get_shape())
+        ni1, no = self.get_shape()
+        res = ArrayTO(np.empty_like(self.value))
+        for i in range(ni1):
+            for j in range(no):
+                res[i][j] = TrustOpinion.avFuse(self.value[i][j], Ty)
+        return res 
     # def fuse(self)->TrustOpinion:
     #     """
     #     Fuse several opinions to form one opinion. 

@@ -25,7 +25,10 @@ X_train = X_train.reshape(-1, 32 * 32 * 3)
 X_test = X_test.reshape(-1, 32 * 32 * 3)
 
 # One-hot encode the labels
-encoder = OneHotEncoder(sparse=False)
+try:
+    encoder = OneHotEncoder(sparse=False)
+except:
+    encoder = OneHotEncoder(sparse_output=False)  
 y_train_one_hot = encoder.fit_transform(y_train)
 y_test_one_hot = encoder.transform(y_test)
 

@@ -24,7 +24,10 @@ X_train, X_test, y_train, y_test= train_test_split(
 X_train, y_train, n_pois = load_poisoned_all(X_train, y_train, patch_size=patch, img_size=32)
 X_test_pois, y_test_pois, _ = load_poisoned_all(X_test, y_test, patch_size=patch, img_size=32)
 
-encoder = OneHotEncoder(sparse=False)
+try:
+    encoder = OneHotEncoder(sparse=False)
+except:
+    encoder = OneHotEncoder(sparse_output=False)  
 y_train_oh = encoder.fit_transform(y_train.reshape(-1, 1))
 y_test_oh = encoder.fit_transform(y_test.reshape(-1, 1))
 

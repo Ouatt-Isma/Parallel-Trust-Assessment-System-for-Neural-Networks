@@ -89,6 +89,7 @@ class PTAS:
         port = self.nn_interface.port_number
         # Establish a socket connection
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((host, port))
             s.listen(1)
             if(DEBUG>=0):
@@ -214,14 +215,16 @@ class PTAS:
                 Tybatch =  self.TrustAssessment(message_obj.content['y_true'], dim=self.structure[2])
                 
                 if(message_obj.layer==1):
+                    self.y_batch_single_opinion = Tybatch.fuse_batch()
                     y_batch_single_opinion = Tybatch.fuse_batch()
+
                     # y_batch_single_opinion = self.aggregation(y_batch_single_opinion)
                     # print(self.Typrime_layers_history[message_obj.layer+1])
                     if(DEBUG>=2):
                         print("weights before")
                         print(self.omega_thetas[0])
                         print(self.omega_thetas[1])
-                    self.apply_trust_revision([deltaW, deltab], message_obj.layer, PTAS.aggregation(self.Typrime_layers_history[message_obj.layer+1]), y_batch_single_opinion, self.learning_rate)
+                    self.apply_trust_revision([deltaW, deltab], message_obj.layer, PTAS.aggregation(self.Typrime_layers_history[message_obj.layer+1]), y_batch_single_opinion, self.learning_rate, self.y_batch_single_opinion)
                     if(DEBUG>=2):
                         print("weights After")
                         print(self.omega_thetas[0])
@@ -232,7 +235,7 @@ class PTAS:
                         print("weights before")
                         print(self.omega_thetas[0])
                         print(self.omega_thetas[1])
-                    self.apply_trust_revision([deltaW, deltab], message_obj.layer, PTAS.aggregation(self.Typrime_layers_history[message_obj.layer+1]), self.Typrime_layers_history[message_obj.layer+1], self.learning_rate)
+                    self.apply_trust_revision([deltaW, deltab], message_obj.layer, PTAS.aggregation(self.Typrime_layers_history[message_obj.layer+1]), self.Typrime_layers_history[message_obj.layer+1], self.learning_rate, self.y_batch_single_opinion)
                     if(DEBUG>=2):
                         print("weights After")
                         print(self.omega_thetas[0])
@@ -357,7 +360,7 @@ class PTAS:
         res = fuse_func(opinions)
         return res 
     
-    def apply_trust_revision(self, data: list, layer: int, y_prime: ArrayTO, y_batch_all_opinion: ArrayTO, learning_rate: TrustOpinion):
+    def apply_trust_revision(self, data: list, layer: int, y_prime: ArrayTO, y_batch_all_opinion: ArrayTO, learning_rate: TrustOpinion, initial_y_batch_single_opinion:TrustOpinion):
         """
         Apply trust revision for the given layer based on incoming data.
         """
@@ -390,8 +393,7 @@ class PTAS:
                 print("opinion_theta_given_not_y")
                 print(opinion_theta_given_not_y)
             # Compute T_theta_from_y 
-
-                print("y_batch_single_opinion", y_batch_single_opinion)
+                
             opinion_theta_y = ArrayTO.op_theta_y(opinion_theta_given_y, opinion_theta_given_not_y, y_batch_single_opinion)
             if(DEBUG>=2):
                 print("opinion_theta_y")
@@ -405,7 +407,13 @@ class PTAS:
             #Compute T_theta after update
             self.omega_thetas[layer] = opinion_theta.update(opinion_theta, learning_rate)
             # self.omega_thetas[layer] = self.omega_thetas[layer]
-            self.omega_thetas[layer] = ArrayTO.update_2(self.omega_thetas[layer], self.Typrime_layers_history[layer])            
+            self.omega_thetas[layer] = ArrayTO.update_2(self.omega_thetas[layer], self.Typrime_layers_history[layer], initial_y_batch_single_opinion[0][0])    
+            # print(type(initial_y_batch_single_opinion))
+            # print("initial_y_batch_single_opinion", initial_y_batch_single_opinion)
+            # print("END")
+            # print("initial_y_batch_single_opinion", initial_y_batch_single_opinion[0])        
+            # print("END")
+            # self.omega_thetas[layer] = ArrayTO.update_3(self.omega_thetas[layer], initial_y_batch_single_opinion[0][0])          
             # print(self.omega_thetas[layer][0][0])
         else:
             raise NotImplementedError

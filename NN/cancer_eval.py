@@ -69,29 +69,49 @@ def show_some():
     plt.ylabel('Frequency')
     plt.show()
 
-# show_some()
-# Split the data into training and testing sets
-X_train, X_test, y_train_one_hot, y_test_one_hot = load_cancer()
+def eval_ptas():
+    # show_some()
+    # Split the data into training and testing sets
+    X_train, X_test, y_train_one_hot, y_test_one_hot = load_cancer()
 
-# Define neural network parameters
-input_size = 30  # Image size (28x28 pixels flattened)
-hidden_size = 16  # Number of neurons in hidden layer
-output_size = 2  # Number of output classes (digits 0-9)
-while(True):
-        print("New Training")
-    # try:
-        # Create neural network
-        nn = NeuralNetwork(input_size, hidden_size, output_size, ptas=True)
-        # Train the model
-        nn.train(X_train, y_train_one_hot, epochs=15, batch_size=64, learning_rate=0.2)
+    try:
+        encoder = OneHotEncoder(sparse=False)
+    except:
+        encoder = OneHotEncoder(sparse_output=False)  
+    y_train_one_hot = encoder.fit_transform(y_train.reshape(-1, 1))
+    y_test_one_hot = encoder.transform(y_test.reshape(-1, 1))
+    
+    # Define neural network parameters
+    input_size = 30  # Image size (28x28 pixels flattened)
+    hidden_size = 16  # Number of neurons in hidden layer
+    output_size = 2  # Number of output classes (digits 0-9)
+    while(True):
+            print("New Training")
+        # try:
+            # Create neural network
+            nn = NeuralNetwork(input_size, hidden_size, output_size, ptas=True)
+            # Train the model
+            nn.train(X_train, y_train_one_hot, epochs=15, batch_size=64, learning_rate=0.2)
 
-        print("Training Over")
-        
-        time.sleep(5)
-        
+            print("Training Over")
+            
+            time.sleep(5)
+            
 
-    # except ConnectionRefusedError as e:
-    #     print("[END] NO ACTIVE PTAS")
-    #     break +_
+        # except ConnectionRefusedError as e:
+        #     print("[END] NO ACTIVE PTAS")
+        #     break +_
 
 
+def eval_cancer():
+    X_train, X_test, y_train_one_hot, y_test_one_hot = load_cancer()
+
+    # Define neural network parameters
+    input_size = 30  # Image size (28x28 pixels flattened)
+    hidden_size = 16  # Number of neurons in hidden layer
+    output_size = 2  # Number of output classes (digits 0-9)
+
+    for x_how in ["clean", "corrupt", "noise"]:
+        for y_how in ["clean", "corrupt", "noise"]:
+            nn = NeuralNetwork(input_size, hidden_size, output_size, ptas=True)
+            nn.train(X_train, y_train_one_hot, X_test, y_test_one_hot, epochs=15, batch_size=64, learning_rate=0.2, fname = f"Cancer-{x_how}-{y_how}")

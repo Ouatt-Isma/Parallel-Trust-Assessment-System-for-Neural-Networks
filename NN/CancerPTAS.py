@@ -82,10 +82,10 @@ def Tgen(xx, yy):
 
 
 
-XX = ["xtrust", 'xvacuous', "xdistrust"]
+XX = ["xtrust", "xdistrust", "xvacuous"]
 # XX = ['xvacuous']
 
-YY = ["ytrust", 'yvacuous', "ydistrust"]
+YY = ["ytrust", "ydistrust", 'yvacuous']
 # YY = ['yvacuous']
 
 # XX = ["xtrust"]

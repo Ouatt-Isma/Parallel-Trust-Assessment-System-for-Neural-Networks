@@ -11,9 +11,11 @@ from primaryNN import NeuralNetwork
 from sklearn.preprocessing import OneHotEncoder
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datasets import load_X, load_y 
+import time 
 
 
-def load_cancer():
+def load_cancer(to_cat = True):
     # Load the dataset directly from Keras
     # Load the dataset
     data = load_breast_cancer()
@@ -28,11 +30,18 @@ def load_cancer():
 
     
     # One-hot encode the labels
-    encoder = OneHotEncoder(sparse=False)
-    y_train_one_hot = encoder.fit_transform(y_train.reshape(-1, 1))
-    y_test_one_hot = encoder.transform(y_test.reshape(-1, 1))
-    
-    return X_train, X_test, y_train_one_hot, y_test_one_hot
+    if to_cat:
+        try:
+            encoder = OneHotEncoder(sparse=False)
+        except:
+            encoder = OneHotEncoder(sparse_output=False)  
+
+        y_train_one_hot = encoder.fit_transform(y_train.reshape(-1, 1))
+        y_test_one_hot = encoder.transform(y_test.reshape(-1, 1))
+        
+        return X_train, X_test, y_train_one_hot, y_test_one_hot
+    else:
+        return X_train, X_test, y_train, y_test
 
 def show_some():
     # Load the dataset
@@ -64,39 +73,65 @@ def show_some():
     plt.ylabel('Frequency')
     plt.show()
 
-# show_some()
-# Split the data into training and testing sets
-X_train, X_test, y_train_one_hot, y_test_one_hot = load_cancer()
+def eval_ptas():
+    # show_some()
+    # Split the data into training and testing sets
+    X_train, X_test, y_train_one_hot, y_test_one_hot = load_cancer()
 
-# Define neural network parameters
-input_size = 30  # Image size (28x28 pixels flattened)
-hidden_size = 16  # Number of neurons in hidden layer
-output_size = 2  # Number of output classes (digits 0-9)
+    # Define neural network parameters
+    input_size = 30  # Image size (28x28 pixels flattened)
+    hidden_size = 16  # Number of neurons in hidden layer
+    output_size = 2  # Number of output classes (digits 0-9)
 
-while(True):
-    # try:
-        # Create neural network
-        nn = NeuralNetwork(input_size, hidden_size, output_size, ptas=True, operation=True)
-        # Train the model
-        nn.train(X_train, y_train_one_hot, epochs=5, batch_size=64, learning_rate=0.2)
+    while(True):
+        # try:
+            # Create neural network
+            nn = NeuralNetwork(input_size, hidden_size, output_size, ptas=True, operation=True)
+            # Train the model
+            nn.train(X_train, y_train_one_hot, epochs=5, batch_size=64, learning_rate=0.2)
 
-        predictions = nn.predict(X_train)
-        accuracy = np.mean(predictions == np.argmax(y_train_one_hot, axis=1))
-        print(f"Train Accuracy: {accuracy * 100:.2f}%")
-
-
-        # Test the model
-        predictions = nn.predict(X_test)
-        accuracy = np.mean(predictions == np.argmax(y_test_one_hot, axis=1))
-        print(f"Test Accuracy: {accuracy * 100:.2f}%")
+            predictions = nn.predict(X_train)
+            accuracy = np.mean(predictions == np.argmax(y_train_one_hot, axis=1))
+            print(f"Train Accuracy: {accuracy * 100:.2f}%")
 
 
-        nn.forward(X_test[0], getactivated=True)
-        nn.end()
-        break 
-
-    # except ConnectionRefusedError as e:
-    #     print("[END] NO ACTIVE PTAS")
-    #     break 
+            # Test the model
+            predictions = nn.predict(X_test)
+            accuracy = np.mean(predictions == np.argmax(y_test_one_hot, axis=1))
+            print(f"Test Accuracy: {accuracy * 100:.2f}%")
 
 
+            nn.forward(X_test[0], getactivated=True)
+            nn.end()
+            break 
+
+        # except ConnectionRefusedError as e:
+        #     print("[END] NO ACTIVE PTAS")
+        #     break 
+
+def eval_cancer():
+    X_train, X_test, y_train, y_test = load_cancer(to_cat=False)
+
+    # Define neural network parameters
+    input_size = 30  # Image size (28x28 pixels flattened)
+    hidden_size = 16  # Number of neurons in hidden layer
+    output_size = 2  # Number of output classes (digits 0-9)
+
+    for x_how in ["clean", "corrupt", "noise"]:
+        for y_how in ["clean", "corrupt", "noise"]:
+            if x_how!= "clean":
+                X_train = load_X(X_train, x_how, input_size)
+            if y_how!= "clean":
+                y_train = load_y(y_train, y_how, output_size)
+            try:
+                encoder = OneHotEncoder(sparse=False)
+            except:
+                encoder = OneHotEncoder(sparse_output=False)  
+            y_train_one_hot = encoder.fit_transform(y_train.reshape(-1, 1))
+            y_test_one_hot = encoder.transform(y_test.reshape(-1, 1))
+            nn = NeuralNetwork(input_size, hidden_size, output_size, ptas=True)
+            nn.train(X_train, y_train_one_hot, X_test, y_test_one_hot, epochs=15, batch_size=64, learning_rate=0.2, fname = f"Cancer-{x_how}-{y_how}", plot=True)
+            time.sleep(5)
+
+
+eval_cancer()
