@@ -82,14 +82,14 @@ def Tgen(xx, yy):
 
 
 
-XX = ["xtrust", "xdistrust", "xvacuous"]
+# XX = ["xvacuous2"]
 # XX = ['xvacuous']
 
-YY = ["ytrust", "ydistrust", 'yvacuous']
+# YY = ['yvacuous2']
 # YY = ['yvacuous']
 
-# XX = ["xtrust"]
-# YY = ["ytrust"]
+XX = ["xtrust",  "xdistrust", "xvacuous"]
+YY = ["ytrust", "ydistrust", "yvacuous"]
 
 
 
@@ -137,7 +137,7 @@ def run_uni_test(xx, yy, epsilon_low, epsilon_up):
     
 
 def test():
-    epsilon_low = 0.1
+    epsilon_low = 0.01
     epsilon_up = None
     for xx in XX:
         for yy in YY:

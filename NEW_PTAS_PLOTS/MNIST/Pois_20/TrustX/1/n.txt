@@ -1,0 +1,26 @@
+Applying feedforward function...
+
+End Applying feedforward function...
+0.4369661808013916s
+
+BENIGN IPTA (0.932,0.0,0.068)
+Generating IPTA Function
+
+Running IPTA Function
+
+Applying feedforward function...
+
+End Applying feedforward function...
+0.31354641914367676s
+
+ATTACKED IPTA (0.929,0.0,0.071)
+Generating IPTA Function
+
+Running IPTA Function
+
+Applying feedforward function...
+
+End Applying feedforward function...
+0.29694437980651855s
+
+ATTACKED PATCHED (0.928,0.001,0.071)

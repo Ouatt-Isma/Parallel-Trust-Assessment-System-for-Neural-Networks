@@ -154,6 +154,7 @@ class PTAS:
         elif message_obj.mode == Mode.TRAINING:
             # Verify that both structure of PTAS and NN matches
             assert self.structure == message_obj.content['structure']
+            self.batch_size = message_obj.content['batch_size']
             # Start training mode
             self.start_training()
         elif self.training_mode:
@@ -212,12 +213,19 @@ class PTAS:
                 #Load delta values 
                 deltaW = message_obj.content['delta_W'] #Weigths 
                 deltab = message_obj.content['delta_b'] #Bias 
-                Tybatch =  self.TrustAssessment(message_obj.content['y_true'], dim=self.structure[2])
+                Tybatch=  self.TrustAssessment(message_obj.content['y_true'], dim=self.structure[2])
+                # Tybatch =  self.TrustAssessment(message_obj.content['y_true'], dim=self.structure[2], get_whole=True)
                 
                 if(message_obj.layer==1):
-                    self.y_batch_single_opinion = Tybatch.fuse_batch()
-                    y_batch_single_opinion = Tybatch.fuse_batch()
-
+                    # self.y_batch_single_opinion = y_single.fuse_batch()
+                    if(self.batch_size == 1):
+                        y_batch_single_opinion = Tybatch
+                    else:
+                        y_batch_single_opinion = Tybatch.fuse_batch()
+                    if(self.patch):
+                        self.y_batch_single_opinion = TrustOpinion.ftrust()
+                    else:
+                        self.y_batch_single_opinion = Tybatch.fuse_batch()[0][0]
                     # y_batch_single_opinion = self.aggregation(y_batch_single_opinion)
                     # print(self.Typrime_layers_history[message_obj.layer+1])
                     if(DEBUG>=2):
@@ -339,7 +347,12 @@ class PTAS:
         Ty2 = ArrayTO.dot(X_with_bias, self.omega_thetas[1])
         # store values 
         if(tmp):
-            self.Typrime_layers_history = [Tx.fuse_batch(),Ty1.fuse_batch(), Ty2.fuse_batch()]
+            if(self.batch_size == 1):
+                Tx.value = Tx.value.T 
+                Ty1.value = Ty1.value.T 
+                self.Typrime_layers_history = [Tx,Ty1, Ty2]
+            else:
+                self.Typrime_layers_history = [Tx.fuse_batch(),Ty1.fuse_batch(), Ty2.fuse_batch()]
         if(DEBUG>=1):
             print("End Applying feedforward function...")
             print(f"{time.time() - deb}s")
@@ -407,7 +420,7 @@ class PTAS:
             #Compute T_theta after update
             self.omega_thetas[layer] = opinion_theta.update(opinion_theta, learning_rate)
             # self.omega_thetas[layer] = self.omega_thetas[layer]
-            self.omega_thetas[layer] = ArrayTO.update_2(self.omega_thetas[layer], self.Typrime_layers_history[layer], initial_y_batch_single_opinion[0][0])    
+            self.omega_thetas[layer] = ArrayTO.update_2(self.omega_thetas[layer], self.Typrime_layers_history[layer], initial_y_batch_single_opinion)    
             # print(type(initial_y_batch_single_opinion))
             # print("initial_y_batch_single_opinion", initial_y_batch_single_opinion)
             # print("END")

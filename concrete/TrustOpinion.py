@@ -180,6 +180,10 @@ class TrustOpinion:
             for i in range(shape[0]):
                 for j in range(shape[1]):
                     res[i][j] = TrustOpinion.random()
+        elif(method=="vacuous2"):
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    res[i][j] = TrustOpinion(0.25, 0.25, 0.5)
         else:
             raise ValueError(f"unsuported type of filling (method={method})")
         return res 

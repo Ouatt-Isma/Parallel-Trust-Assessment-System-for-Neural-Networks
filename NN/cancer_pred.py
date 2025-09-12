@@ -110,18 +110,20 @@ def eval_ptas():
         #     break 
 
 def eval_cancer():
-    X_train, X_test, y_train, y_test = load_cancer(to_cat=False)
 
     # Define neural network parameters
     input_size = 30  # Image size (28x28 pixels flattened)
     hidden_size = 16  # Number of neurons in hidden layer
     output_size = 2  # Number of output classes (digits 0-9)
 
-    for x_how in ["clean", "corrupt", "noise"]:
+   
+    for x_how in ["clean", "corrupt", "noise"]: 
         for y_how in ["clean", "corrupt", "noise"]:
+            X_train, X_test, y_train, y_test = load_cancer(to_cat=False)
             if x_how!= "clean":
                 X_train = load_X(X_train, x_how, input_size)
-            if y_how!= "clean":
+            if y_how != "clean":
+                print(y_how)
                 y_train = load_y(y_train, y_how, output_size)
             try:
                 encoder = OneHotEncoder(sparse=False)
@@ -130,7 +132,7 @@ def eval_cancer():
             y_train_one_hot = encoder.fit_transform(y_train.reshape(-1, 1))
             y_test_one_hot = encoder.transform(y_test.reshape(-1, 1))
             nn = NeuralNetwork(input_size, hidden_size, output_size, ptas=True)
-            nn.train(X_train, y_train_one_hot, X_test, y_test_one_hot, epochs=15, batch_size=64, learning_rate=0.2, fname = f"Cancer-{x_how}-{y_how}", plot=True)
+            nn.train(X_train, y_train_one_hot, X_test, y_test_one_hot, epochs=15, batch_size=64, learning_rate=0.2, fname = f"Cancer-{x_how}-{y_how}", plot=False)
             time.sleep(5)
 
 

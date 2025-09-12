@@ -16,7 +16,7 @@ def main_pois(patch, plot=False):
     
     
     output_size = 10  # Number of output classes (digits 0-9)
-    hidden_size = 20  # Number of neurons in hidden layer
+    hidden_size = 10  # Number of neurons in hidden layer
     
 
     X_train, y_train, n_pois = load_poisoned_mnist(X_train, y_train, patch_size=patch)
@@ -51,11 +51,12 @@ def main_pois(patch, plot=False):
 
     # Train the model
     if(plot):
-        nn.ptas = False
+        # nn.ptas = False
         nn.train(X_train, y_train_one_hot, X_test=X_test, y_test= y_test_one_hot, 
-                 epochs=10, batch_size=18, learning_rate=0.001, plot=True, X_non_pois_3=X_test[ids_3], 
+                 epochs=10, batch_size=1, learning_rate=0.001, plot=True, X_non_pois_3=X_test[ids_3], 
                  X_non_pois_6=X_test[ids_6], X_pois_3=pois_X_test_3, X_pois_6=pois_X_test_3, fname =f'MNIST{patch}')
     else:
+        # nn.ptas = False
         nn.train(X_train, y_train_one_hot, epochs=10, batch_size=18, learning_rate=0.001)
 
     # loaded_arr = np.load('my_array.npy')
@@ -237,13 +238,16 @@ import time
 def test_pois():
     for patch in [1, 4, 20, 27]:
         print("New Training")
-        main_pois(patch, plot=True)
-
-
+        try:
+            main_pois(patch, plot=False)
+        except: 
+            time.sleep(4)
+            continue
 
 if __name__=='__main__':
     # test()
-    test_size()
+    # test_size()
+    test_pois()
     # main_pois(20, plot=True)
     # main_pois(27, plot=True)
     # main_color()

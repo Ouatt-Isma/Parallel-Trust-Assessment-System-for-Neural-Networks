@@ -271,7 +271,7 @@ def noised_image(image, noise_prob=0.1, noise_scale=0.2, img_size=28):
     
     return image.reshape(-1)
 
-def noised_features(image, noise_prob=0.1, noise_scale=0.2, input_size=28*28):
+def noised_features(image, noise_prob=0.3, noise_scale=0.3, input_size=28*28):
     """
     Randomly corrupts pixels in an image by adding noise.
 
@@ -297,7 +297,7 @@ def noised_features(image, noise_prob=0.1, noise_scale=0.2, input_size=28*28):
     
     return image.reshape(-1)
 
-def noised_label(label, num_classes, noise_prob=0.1):
+def noised_label(label, num_classes, noise_prob=0.5):
     """
     Randomly corrupts a label by flipping it to another class.
 
@@ -418,10 +418,11 @@ def load_X(X_train, how="corrupt", input_size=28*28):
     return X_train 
 
 def load_y(y_train, how="corrupt", num_classes=10):
-    if(how== "corrupt"):
+    if(how == "corrupt"):
+        print("corrupt")
         for i in range(len(y_train)):
             y_train[i] = corrupt_all_labels(y_train[i], num_classes=num_classes)
-    if(how== "noise"):
+    if(how == "noise"):
         for i in range(len(y_train)):
             y_train[i] = noised_label(y_train[i], num_classes=num_classes)
     return y_train 

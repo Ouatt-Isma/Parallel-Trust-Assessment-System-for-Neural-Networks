@@ -193,7 +193,7 @@ class NeuralNetwork:
         }
 
         if self.ptas:
-            obj = MessageObject(Mode.TRAINING, {"structure": [self.input_size, self.hidden_size, self.output_size]})
+            obj = MessageObject(Mode.TRAINING, {"structure": [self.input_size, self.hidden_size, self.output_size], "batch_size": batch_size})
             try:
                 send_in_chunks(obj)
             except Exception as e:
@@ -268,7 +268,7 @@ class NeuralNetwork:
             # Accuracy curves
             plt.plot(iterations, history["train_acc"], label="Train")
             plt.plot(iterations, history["test_acc"], label="Test")
-            if(X_pois_6):
+            if(X_pois_6 != None):
                 plt.plot(iterations, history["pois_acc_label6"], label="Poisoned Images 6")
                 plt.plot(iterations, history["clean_acc_label6"], label="Clean Images 6")
                 plt.plot(iterations, history["pois_acc_label3"], label="Poisoned Images 3")
@@ -309,7 +309,7 @@ class NeuralNetwork:
 
     def predict(self, X):
         """Make predictions"""
-        y_pred = self.forward(X)
+        y_pred = self.forward(X, getactivated=True)
         return np.argmax(y_pred, axis=1)
     
 def send_message(obj, port=5000):
