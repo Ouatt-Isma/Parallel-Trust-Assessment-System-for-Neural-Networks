@@ -268,7 +268,7 @@ class NeuralNetwork:
             # Accuracy curves
             plt.plot(iterations, history["train_acc"], label="Train")
             plt.plot(iterations, history["test_acc"], label="Test")
-            if(X_pois_6 != None):
+            if(X_pois_6 is not None):
                 plt.plot(iterations, history["pois_acc_label6"], label="Poisoned Images 6")
                 plt.plot(iterations, history["clean_acc_label6"], label="Clean Images 6")
                 plt.plot(iterations, history["pois_acc_label3"], label="Poisoned Images 3")

@@ -239,12 +239,9 @@ import time
 def test_pois():
     for patch in [20, 27]:
         print("New Training")
-        try:
-            main_pois(patch, plot=True)
-        except: 
-            time.sleep(4)
-            continue
-
+        
+        main_pois(patch, plot=True)
+       
 if __name__=='__main__':
     # test()
     test_pois()
