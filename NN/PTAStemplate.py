@@ -222,10 +222,9 @@ class PTAS:
                         y_batch_single_opinion = Tybatch
                     else:
                         y_batch_single_opinion = Tybatch.fuse_batch()
-                    if(self.patch):
-                        self.y_batch_single_opinion = TrustOpinion.ftrust()
-                    else:
-                        self.y_batch_single_opinion = Tybatch.fuse_batch()[0][0]
+           
+  
+                    self.y_batch_single_opinion = Tybatch.fuse_batch()[0][0]
                     # y_batch_single_opinion = self.aggregation(y_batch_single_opinion)
                     # print(self.Typrime_layers_history[message_obj.layer+1])
                     if(DEBUG>=2):

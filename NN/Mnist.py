@@ -51,9 +51,9 @@ def main_pois(patch, plot=False):
 
     # Train the model
     if(plot):
-        # nn.ptas = False
+        nn.ptas = False
         nn.train(X_train, y_train_one_hot, X_test=X_test, y_test= y_test_one_hot, 
-                 epochs=10, batch_size=1, learning_rate=0.001, plot=True, X_non_pois_3=X_test[ids_3], 
+                 epochs=10, batch_size=18, learning_rate=0.001, plot=True, X_non_pois_3=X_test[ids_3], 
                  X_non_pois_6=X_test[ids_6], X_pois_3=pois_X_test_3, X_pois_6=pois_X_test_3, fname =f'MNIST{patch}')
     else:
         # nn.ptas = False
@@ -114,17 +114,17 @@ def main_pois(patch, plot=False):
 def test_size(plot=False):
     # Load dataset
     # X_train, X_test, y_train_one_hot, y_test_one_hot, _ = load_mnist()
-    # X_train, X_test, y_train, y_test = load_mnist()
+    X_train, X_test, y_train, y_test = load_mnist()
     # input_size = 28 * 28  # Image size (28x28 pixels flattened)
     # X_train, X_test, y_train, y_test = load_colored_mnist()
     input_size = 28 * 28 # Image size (28x28 pixels flattened)
-    X_train, X_test, y_train, y_test = load_uncertain_mnist()
+    # X_train, X_test, y_train, y_test = load_uncertain_mnist()
     # Define neural network parameters
     
     
     output_size = 10  # Number of output classes (digits 0-9)
 
-    for hidden_size in [5,10,20]:
+    for hidden_size in [20]:
         try:
             encoder = OneHotEncoder(sparse=False)
         except:
@@ -137,6 +137,7 @@ def test_size(plot=False):
 
         # Train the model
         if(plot):
+            nn.ptas = False
             nn.train(X_train, y_train_one_hot, X_test=X_test, y_test= y_test_one_hot, 
                     epochs=10, batch_size=18, learning_rate=0.001, plot=True)
         else:
@@ -236,30 +237,15 @@ def test():
 
 import time 
 def test_pois():
-    for patch in [1, 4, 20, 27]:
+    for patch in [20, 27]:
         print("New Training")
         try:
-            main_pois(patch, plot=False)
+            main_pois(patch, plot=True)
         except: 
             time.sleep(4)
             continue
 
 if __name__=='__main__':
     # test()
-    # test_size()
     test_pois()
-    # main_pois(20, plot=True)
-    # main_pois(27, plot=True)
-    # main_color()
     time.sleep(2)
-    # loaded_arr = np.load('my_array.npy')
-    # import pickle
-    # folder_path = r"D:\\Users\\k50034798\Documents\\PhD\\code\\GOOD\\Ovll\\"
-
-    # # Open the pickle file in binary read mode
-    # with open(folder_path+'\\NN\\Eval_mnist\\av.pkl', 'rb') as file:
-    #     data = pickle.load(file)
-
-    # # Display the data
-    # print(data)
-    # test()

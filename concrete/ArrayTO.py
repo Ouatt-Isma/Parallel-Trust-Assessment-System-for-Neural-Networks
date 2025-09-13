@@ -387,7 +387,6 @@ class ArrayTO:
                 d = max(Tx[i][0].d, Ty.d)
                 u = 1 -b -d 
                 myOp = TrustOpinion(b,d,u)
-                myOp = Tx[i][0]
                 res[i][j] = TrustOpinion.binMult(self.value[i][j], myOp)
         for j in range(no):
             res[ni][j] = TrustOpinion.binMult(self.value[i][j], Ty)
