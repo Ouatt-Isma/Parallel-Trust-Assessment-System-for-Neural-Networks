@@ -309,7 +309,7 @@ class NeuralNetwork:
 
     def predict(self, X):
         """Make predictions"""
-        y_pred = self.forward(X, getactivated=True)
+        y_pred = self.forward(X, getactivated=False)
         return np.argmax(y_pred, axis=1)
     
 def send_message(obj, port=5000):
