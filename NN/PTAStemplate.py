@@ -43,6 +43,9 @@ class PTAS:
         self.eval = eval
         self.patch = patch
         self.batch_size=None
+        self._bias_cache = {}
+        self._eval_input_cache = {}
+        self._patch_indices_cache = None
         if(self.eval):
             if(self.patch):
                 self.EVAL = {"trust":[], "untrust":[], "distrust":[], "patch_tr":[], "patch_vac":[]}
@@ -92,26 +95,28 @@ class PTAS:
                         print(f"Connection from {addr}")
                         print()
 
-                    # Receive the total length of the data
-                    total_data_length = int.from_bytes(self._recv_exact(conn, 4), 'big')
+                    while True:
+                        # Receive the total length of the next message.
+                        header = self._recv_exact(conn, 4, allow_eof=True)
+                        if header is None:
+                            break
+                        total_data_length = int.from_bytes(header, 'big')
 
-                    # Receive the data in chunks
-                    received_data = self._recv_exact(conn, total_data_length, chunk_size=chunk_size)
+                        # Receive and deserialize the message payload.
+                        received_data = self._recv_exact(conn, total_data_length, chunk_size=chunk_size)
+                        data = pickle.loads(received_data)
+                        if(DEBUG>=2):
+                            print("Data received and unpickled:", data)
+                            print()
 
-                    # Unpickle the received data
-                    data = pickle.loads(received_data)
-                    if(DEBUG>=2):
-                        print("Data received and unpickled:", data)
-                        print()
-
-                    end = self.process_data(data)
-                    ack_message = pickle.dumps("ACK")
-                    conn.sendall(ack_message)
-                    if(end):
-                        return
+                        end = self.process_data(data)
+                        ack_message = pickle.dumps("ACK")
+                        conn.sendall(ack_message)
+                        if(end):
+                            return
 
     @staticmethod
-    def _recv_exact(conn, expected_size: int, chunk_size=1024):
+    def _recv_exact(conn, expected_size: int, chunk_size=1024, allow_eof=False):
         """Read exactly expected_size bytes from a socket."""
         buffer = bytearray(expected_size)
         view = memoryview(buffer)
@@ -120,6 +125,8 @@ class PTAS:
             to_read = min(chunk_size, expected_size - received)
             nbytes = conn.recv_into(view[received:received + to_read], to_read)
             if nbytes == 0:
+                if allow_eof and received == 0:
+                    return None
                 raise ConnectionError("Socket closed before receiving expected number of bytes")
             received += nbytes
         return buffer
@@ -163,9 +170,12 @@ class PTAS:
                 Tx = self.TrustAssessment(message_obj.content['X'], dim = self.omega_thetas[0].get_shape()[0] - 1)
                 self.apply_feedforward(Tx)
                 if(self.eval):
-                    Txtrust = ArrayTO(TrustOpinion.fill(shape = (1, self.omega_thetas[0].get_shape()[0] - 1), method="trust"))
-                    Txuntrust = ArrayTO(TrustOpinion.fill(shape = (1, self.omega_thetas[0].get_shape()[0] - 1), method="vacuous"))
-                    Txdistrust = ArrayTO(TrustOpinion.fill(shape = (1, self.omega_thetas[0].get_shape()[0] - 1), method="distrust"))
+                    n_inputs = self.omega_thetas[0].get_shape()[0] - 1
+
+                    Txtrust = self._build_eval_input("trust", n_inputs)
+                    Txuntrust = self._build_eval_input("vacuous", n_inputs)
+                    Txdistrust = self._build_eval_input("distrust", n_inputs)
+
                     ytrust = self.apply_feedforward(Txtrust, tmp=False)
                     self.EVAL["trust"].append(ytrust)
                     self.EVAL_HIDDEN["trust"].append(self.Typrime_layers_history[1])
@@ -179,21 +189,13 @@ class PTAS:
                     self.EVAL_HIDDEN["distrust"].append(self.Typrime_layers_history[1])
 
                     if(self.patch):
-                        img_h_l = int(np.sqrt(self.omega_thetas[0].get_shape()[0] - 1))
-                        Txpatch = ArrayTO(TrustOpinion.fill(shape = (1, self.omega_thetas[0].get_shape()[0] - 1), method="trust"))
-                        for i in range(self.patch):
-                            for j in range(self.patch):
-                                Txpatch.value[0][img_h_l*i+j] = TrustOpinion.dtrust()
-                        ypatch = self.apply_feedforward(Txpatch, tmp=False)
+                        Txpatch_tr = self._build_eval_patch_input("trust", n_inputs)
+                        ypatch = self.apply_feedforward(Txpatch_tr, tmp=False)
                         self.EVAL["patch_tr"].append(ypatch)
 
-                        Txpatch = ArrayTO(TrustOpinion.fill(shape = (1, self.omega_thetas[0].get_shape()[0] - 1), method="vacuous"))
-                        for i in range(self.patch):
-                            for j in range(self.patch):
-                                Txpatch.value[0][img_h_l*i+j] = TrustOpinion.dtrust()
-                        ypatch = self.apply_feedforward(Txpatch, tmp=False)
+                        Txpatch_vac = self._build_eval_patch_input("vacuous", n_inputs)
+                        ypatch = self.apply_feedforward(Txpatch_vac, tmp=False)
                         self.EVAL["patch_vac"].append(ypatch)
-
 
                     if(DEBUG>=2):
                         print("trust")
@@ -217,8 +219,7 @@ class PTAS:
                     else:
                         y_batch_single_opinion = Tybatch.fuse_batch()
 
-
-                    self.y_batch_single_opinion = Tybatch.fuse_batch()[0][0]
+                    self.y_batch_single_opinion = y_batch_single_opinion[0][0]
                     if(DEBUG>=2):
                         print("weights before")
                         print(self.omega_thetas[0])
@@ -239,8 +240,9 @@ class PTAS:
                         print("weights After")
                         print(self.omega_thetas[0])
                         print(self.omega_thetas[1])
-                print("batch obj")
-                print(message_obj.batch)
+                if(DEBUG>=2):
+                    print("batch obj")
+                    print(message_obj.batch)
 
                 # Comment this part for full training
                 # if message_obj.batch == 2 and message_obj.layer == 0:
@@ -287,6 +289,32 @@ class PTAS:
             return PTAS.aggregation(iptaPtas.apply_feedforward(Tx))
         return IPTA
 
+    def _build_eval_input(self, method: str, n_inputs: int) -> ArrayTO:
+        key = (method, n_inputs)
+        cached = self._eval_input_cache.get(key)
+        if cached is None:
+            cached = ArrayTO(TrustOpinion.fill(shape=(1, n_inputs), method=method))
+            self._eval_input_cache[key] = cached
+        return cached
+
+    def _get_patch_indices(self, n_inputs: int):
+        if self._patch_indices_cache is not None:
+            return self._patch_indices_cache
+        img_h_l = int(np.sqrt(n_inputs))
+        patch_indices = [img_h_l * i + j for i in range(self.patch) for j in range(self.patch)]
+        self._patch_indices_cache = patch_indices
+        return patch_indices
+
+    def _build_eval_patch_input(self, base_method: str, n_inputs: int) -> ArrayTO:
+        key = ("patch", base_method, n_inputs, self.patch)
+        cached = self._eval_input_cache.get(key)
+        if cached is None:
+            cached = ArrayTO(TrustOpinion.fill(shape=(1, n_inputs), method=base_method))
+            for idx in self._get_patch_indices(n_inputs):
+                cached.value[0][idx] = TrustOpinion.dtrust()
+            self._eval_input_cache[key] = cached
+        return cached
+
     def start_training(self):
         """
         Set the PTAS in training mode.
@@ -315,7 +343,11 @@ class PTAS:
             print()
             deb = time.time()
         # Bias trust input always trusted
-        one = TrustOpinion.fill(shape = (Tx.value.shape[0], 1), method="one")
+        batch_n = Tx.value.shape[0]
+        one = self._bias_cache.get(batch_n)
+        if one is None:
+            one = TrustOpinion.fill(shape=(batch_n, 1), method="one")
+            self._bias_cache[batch_n] = one
         # Concatenate Tx input with bias trust input
         X_with_bias = ArrayTO(np.c_[Tx.value, one])
         # Compute Trust Output for hidden layer
@@ -323,14 +355,15 @@ class PTAS:
         # Compute Trust Output for Output layer
         X_with_bias = ArrayTO(np.c_[Ty1.value, one])
         Ty2 = ArrayTO.dot(X_with_bias, self.omega_thetas[1])
-        # store values
-        if(tmp):
+        # store values only for training path (avoid overwriting history during eval probes)
+        if tmp:
             if(self.batch_size == 1):
-                Tx.value = Tx.value.T
-                Ty1.value = Ty1.value.T
-                self.Typrime_layers_history = [Tx,Ty1, Ty2]
+                tx_hist = ArrayTO(Tx.value.T.copy())
+                ty1_hist = ArrayTO(Ty1.value.T.copy())
+                history = [tx_hist, ty1_hist, Ty2]
             else:
-                self.Typrime_layers_history = [Tx.fuse_batch(),Ty1.fuse_batch(), Ty2.fuse_batch()]
+                history = [Tx.fuse_batch(), Ty1.fuse_batch(), Ty2.fuse_batch()]
+            self.Typrime_layers_history = history
         if(DEBUG>=1):
             print("End Applying feedforward function...")
             print(f"{time.time() - deb}s")
@@ -342,13 +375,8 @@ class PTAS:
         Aggregate Tys into one T
         """
         val = Tys.value
-        inds = np.ndindex(np.shape(val))
-        list_ind = list(inds)
-        opinions = []
-        for index in list_ind:
-            opinions.append(val[index])
-        res = fuse_func(opinions)
-        return res
+        opinions = list(np.asarray(val, dtype=object).flat)
+        return fuse_func(opinions)
 
     def apply_trust_revision(self, data: list, layer: int, y_prime: ArrayTO, y_batch_all_opinion: ArrayTO, learning_rate: TrustOpinion, initial_y_batch_single_opinion:TrustOpinion):
         """
