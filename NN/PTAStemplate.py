@@ -355,15 +355,14 @@ class PTAS:
         # Compute Trust Output for Output layer
         X_with_bias = ArrayTO(np.c_[Ty1.value, one])
         Ty2 = ArrayTO.dot(X_with_bias, self.omega_thetas[1])
-        # store values only for training path (avoid overwriting history during eval probes)
-        if tmp:
-            if(self.batch_size == 1):
-                tx_hist = ArrayTO(Tx.value.T.copy())
-                ty1_hist = ArrayTO(Ty1.value.T.copy())
-                history = [tx_hist, ty1_hist, Ty2]
-            else:
-                history = [Tx.fuse_batch(), Ty1.fuse_batch(), Ty2.fuse_batch()]
-            self.Typrime_layers_history = history
+        # store values
+        if(self.batch_size == 1):
+            Tx.value = Tx.value.T
+            Ty1.value = Ty1.value.T
+            history = [Tx, Ty1, Ty2]
+        else:
+            history = [Tx.fuse_batch(), Ty1.fuse_batch(), Ty2.fuse_batch()]
+        self.Typrime_layers_history = history
         if(DEBUG>=1):
             print("End Applying feedforward function...")
             print(f"{time.time() - deb}s")
