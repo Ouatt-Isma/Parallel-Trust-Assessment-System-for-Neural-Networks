@@ -349,12 +349,18 @@ class PTAS:
             one = TrustOpinion.fill(shape=(batch_n, 1), method="one")
             self._bias_cache[batch_n] = one
         # Concatenate Tx input with bias trust input
-        X_with_bias = ArrayTO(np.c_[Tx.value, one])
+        tx_val = Tx.value
+        x_with_bias = np.empty((batch_n, tx_val.shape[1] + 1), dtype=TrustOpinion)
+        x_with_bias[:, :-1] = tx_val
+        x_with_bias[:, -1:] = one
         # Compute Trust Output for hidden layer
-        Ty1 = ArrayTO.dot(X_with_bias, self.omega_thetas[0])
+        Ty1 = ArrayTO.dot(ArrayTO(x_with_bias), self.omega_thetas[0])
         # Compute Trust Output for Output layer
-        X_with_bias = ArrayTO(np.c_[Ty1.value, one])
-        Ty2 = ArrayTO.dot(X_with_bias, self.omega_thetas[1])
+        ty1_val = Ty1.value
+        y_with_bias = np.empty((batch_n, ty1_val.shape[1] + 1), dtype=TrustOpinion)
+        y_with_bias[:, :-1] = ty1_val
+        y_with_bias[:, -1:] = one
+        Ty2 = ArrayTO.dot(ArrayTO(y_with_bias), self.omega_thetas[1])
         # store values
         if(self.batch_size == 1):
             Tx.value = Tx.value.T
@@ -374,8 +380,7 @@ class PTAS:
         Aggregate Tys into one T
         """
         val = Tys.value
-        opinions = list(np.asarray(val, dtype=object).flat)
-        return fuse_func(opinions)
+        return TrustOpinion.avFuseIterable(val.flat)
 
     def apply_trust_revision(self, data: list, layer: int, y_prime: ArrayTO, y_batch_all_opinion: ArrayTO, learning_rate: TrustOpinion, initial_y_batch_single_opinion:TrustOpinion):
         """

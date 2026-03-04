@@ -701,10 +701,33 @@ class TrustOpinion:
 
     def avFuseGen(opinions: List['TrustOpinion']) -> 'TrustOpinion':
         n = len(opinions)
-        t = sum(op.t for op in opinions) / n
-        d = sum(op.d for op in opinions) / n
-        u = sum(op.u for op in opinions) / n
+        t_sum = 0.0
+        d_sum = 0.0
+        u_sum = 0.0
+        for op in opinions:
+            t_sum += op.t
+            d_sum += op.d
+            u_sum += op.u
+        t = t_sum / n
+        d = d_sum / n
+        u = u_sum / n
         t, d, u = TrustOpinion.normalize_opinion(t, d, u)
+        return TrustOpinion(t, d, u, base_rate=0.5)
+
+    def avFuseIterable(opinions) -> 'TrustOpinion':
+        """Fuse opinions from any iterable without materializing an intermediate list."""
+        t_sum = 0.0
+        d_sum = 0.0
+        u_sum = 0.0
+        count = 0
+        for op in opinions:
+            t_sum += op.t
+            d_sum += op.d
+            u_sum += op.u
+            count += 1
+        if count == 0:
+            raise ValueError("Cannot fuse an empty iterable of opinions")
+        t, d, u = TrustOpinion.normalize_opinion(t_sum / count, d_sum / count, u_sum / count)
         return TrustOpinion(t, d, u, base_rate=0.5)
 
     def cumFuseGen(opinions: List['TrustOpinion']) -> 'TrustOpinion':
