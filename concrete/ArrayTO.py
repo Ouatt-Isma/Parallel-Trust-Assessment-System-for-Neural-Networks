@@ -45,7 +45,7 @@ class ArrayTO:
     def __matmul__(self, other):
         """
         Multiply two matrices A and B using classical matrix multiplication,
-        but aggregate using a custom `add` function on a list of products.
+        but aggregate using TrustOpinion fusion without allocating intermediate lists.
         """
         A = self.value
         B = other.value
@@ -56,13 +56,11 @@ class ArrayTO:
             raise ValueError(f"A's columns {A_cols} must equal B's rows {B_rows} for matrix multiplication")
 
         result = np.empty((A_rows, B_cols), dtype=TrustOpinion)
-        add_opinions = TrustOpinion.add
 
         for i in range(A_rows):
             a_row = A[i]
             for j in range(B_cols):
-                product_terms = [a_row[k] * B[k][j] for k in range(A_cols)]
-                result[i][j] = add_opinions(product_terms)
+                result[i][j] = TrustOpinion.avFuseIterable(a_row[k] * B[k][j] for k in range(A_cols))
 
         return ArrayTO(result)
 
@@ -248,10 +246,9 @@ class ArrayTO:
         bsize, n = np.shape(val)
         if bsize == 1:
             return self
-        Arres = ArrayTO(np.empty(shape = (n, 1), dtype=TrustOpinion))
+        Arres = ArrayTO(np.empty(shape=(n, 1), dtype=TrustOpinion))
         for i in range(n):
-            res = TrustOpinion.add([val[index][i] for index in range(1, bsize)])
-            Arres.value[i][0] = res
+            Arres.value[i][0] = TrustOpinion.avFuseIterable(val[index][i] for index in range(bsize))
         return Arres
 
 
